@@ -335,6 +335,21 @@ button:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
 .rectbl th{font-weight:400;color:var(--muted);font-size:13px}
 .rectbl td:first-child{text-align:left}
 .rectbl .none{color:var(--muted);opacity:.6}
+.myid{margin:0;font-size:11px;color:var(--muted);word-break:break-all;user-select:text;-webkit-user-select:text}
+.mbox.wide{max-width:640px}
+.stats{display:flex;flex-direction:column;gap:14px;font-size:14px}
+.stats h3{margin:0;font-weight:400;font-size:17px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.kpi{border:2px solid var(--line);border-radius:12px;padding:8px;text-align:center;background:var(--bg)}
+.kpi b{display:block;font-family:var(--en);font-weight:900;font-size:24px;color:var(--teal);font-variant-numeric:tabular-nums}
+.kpi span{font-size:12px;color:var(--muted)}
+.stats table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.stats th,.stats td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;font-size:13px}
+.stats th{font-weight:400;color:var(--muted)}
+.stats .tw{overflow-x:auto}
+.bar{display:inline-block;height:9px;border-radius:5px;background:var(--teal);vertical-align:middle;margin-left:6px}
+.stats .muted{color:var(--muted);font-size:12px}
+@media (max-width:420px){.kpis{grid-template-columns:repeat(2,1fr)}}
 /* ================= CHRISTMAS THEME ================= */
 html.xm.xm.xm{--bg:#efe3c4; --panel:#fbf4e1; --ink:#1b1a17; --muted:#5b5446; --line:#1b1a17; --sun:#c8312f; --sun-ink:#fff7e6; --teal:#1f5a47; --teal-soft:#dcebdc; --ok:#2e7d4f; --ok-soft:#dcefd9; --ng:#c8312f; --ng-soft:#f7d9d4; --stamp:#c8312f; --shadow:3px 3px 0 #1b1a17; color-scheme:light}
 @media (prefers-color-scheme: dark){html.xm.xm.xm{--bg:#efe3c4; --panel:#fbf4e1; --ink:#1b1a17; --muted:#5b5446; --line:#1b1a17; --sun:#c8312f; --sun-ink:#fff7e6; --teal:#1f5a47; --teal-soft:#dcebdc; --ok:#2e7d4f; --ok-soft:#dcefd9; --ng:#c8312f; --ng-soft:#f7d9d4; --stamp:#c8312f; --shadow:3px 3px 0 #1b1a17; color-scheme:light}}
@@ -400,7 +415,7 @@ html.xm .skin button[aria-pressed="true"]{background:#fff7e6;color:#c8312f}
       <button class="gtab" role="tab" data-g="tower" aria-selected="false">🧱<br>블록</button>
       <button class="gtab" role="tab" data-g="match" aria-selected="false">🔗<br>짝 찾기</button>
     </div>
-    <div class="acct" id="acct"><span class="acct-name" id="acctName">👤 손님</span><button class="acct-btn" id="btnRec" hidden>📊 내 기록</button><button class="acct-btn" id="btnLogin">로그인</button></div>
+    <div class="acct" id="acct"><span class="acct-name" id="acctName">👤 손님</span><button class="acct-btn" id="btnStats" hidden>📈 통계</button><button class="acct-btn" id="btnRec" hidden>📊 내 기록</button><button class="acct-btn" id="btnLogin">로그인</button></div>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" data-k="word" aria-selected="true">영어</button>
       <button class="tab" role="tab" data-k="math" aria-selected="false">수학</button>
@@ -550,10 +565,18 @@ html.xm .skin button[aria-pressed="true"]{background:#fff7e6;color:#c8312f}
     <button class="big alt" id="lgCancel">취소</button>
   </div>
 </div>
+<div class="modal" id="statsModal" hidden>
+  <div class="mbox wide">
+    <h2>📈 관리자 통계</h2>
+    <div id="statsBody" class="stats">불러오는 중…</div>
+    <button class="big alt" id="statsClose">닫기</button>
+  </div>
+</div>
 <div class="modal" id="recModal" hidden>
   <div class="mbox">
     <h2 id="recTitle">내 기록</h2>
     <div class="rectbl" id="recBody"></div>
+    <p class="myid" id="myId"></p>
     <button class="big alt" id="recClose">닫기</button>
   </div>
 </div>
@@ -1981,7 +2004,8 @@ function applySkin(sk){
 }
 document.querySelectorAll('#skin button').forEach(function(b){
   b.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-  b.onclick=function(e){ e.stopPropagation(); applySkin(b.dataset.s); };
+  b.onclick=function(e){ e.stopPropagation(); applySkin(b.dataset.s);
+    if(typeof FB!=='undefined' && FB.ok && FB.isAdmin){ FB.db.doc('config/site').set({skin:b.dataset.s, updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(function(){}); } };
 });
 (function(){ var sk='xmas'; try{ sk=localStorage.getItem('skin')||'xmas'; }catch(e){} applySkin(sk); })();
 
@@ -1993,6 +2017,8 @@ function fbInit(){
     firebase.initializeApp(FIREBASE_CONFIG);
     FB.auth=firebase.auth(); FB.db=firebase.firestore(); FB.ok=true;
     FB.auth.onAuthStateChanged(onUser);
+    (function(){ var k='visit_'+dayId(new Date()); var seen=false; try{ seen=!!localStorage.getItem(k); localStorage.setItem(k,'1'); }catch(e){} if(!seen) statInc('visits'); })();
+    FB.db.doc('config/site').onSnapshot(function(d){ if(d.exists && d.data().skin) applySkin(d.data().skin); }, function(){});
   }catch(e){ FB.ok=false; }
 }
 async function sha(t){ var b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return Array.from(new Uint8Array(b)).map(function(x){ return x.toString(16).padStart(2,'0'); }).join(''); }
@@ -2017,17 +2043,21 @@ async function onUser(u){
     try{
       var d=await FB.db.doc('users/'+u.uid).get(); if(d.exists && d.data().name) FB.name=d.data().name;
       var qs=await FB.db.collection('users/'+u.uid+'/scores').get(); qs.forEach(function(x){ FB.bests[x.id]=x.data(); });
+      try{ var ad=await FB.db.doc('admins/'+u.uid).get(); FB.isAdmin=ad.exists; }catch(e){ FB.isAdmin=false; }
     }catch(e){}
-  }else FB.name='';
+  }else{ FB.name=''; FB.isAdmin=false; }
   renderAcct(); if(!$('start').hidden) syncKind();
 }
 function renderAcct(){
   var on=!!FB.user;
-  $('acctName').textContent = on ? '👤 '+(FB.name||'친구')+' 님' : '👤 손님 (기록은 이 기기에만)';
+  $('acctName').textContent = on ? (FB.isAdmin?'👑 ':'👤 ')+(FB.name||'친구')+' 님'+(FB.isAdmin?' (관리자)':'') : '👤 손님 (기록은 이 기기에만)';
+  $('skin').hidden = FB.ok && !FB.isAdmin;
+  $('btnStats').hidden = !(on && FB.isAdmin);
   $('btnLogin').textContent = on ? '로그아웃' : '로그인';
   $('btnRec').hidden = !on;
 }
 function saveScore(game, kind, score, wrong){
+  statInc('plays');
   if(!FB.ok || !FB.user || !game || !kind) return;
   var id=game+'_'+kind, prev=FB.bests[id]||{}, better = game==='match' ? (!prev.best || score<prev.best) : score>(prev.best||0);
   var inc=firebase.firestore.FieldValue.increment(1), now=firebase.firestore.FieldValue.serverTimestamp();
@@ -2050,7 +2080,7 @@ $('lgGo').onclick=async function(){
   if(!name){ $('lgErr').textContent='이름을 써 주세요.'; return; }
   if(!validBirth(birth)){ $('lgErr').textContent='생년월일 8자리를 확인해 주세요. 예) 20190315'; return; }
   $('lgGo').disabled=true; $('lgErr').textContent='들어가는 중…';
-  try{ await doLogin(name,birth); $('loginModal').hidden=true; $('lgBirth').value='';
+  try{ await doLogin(name,birth); statInc('logins'); $('loginModal').hidden=true; $('lgBirth').value='';
     if(FB.isNew){ FB.isNew=false; renderAcct(); } }
   catch(e){ $('lgErr').textContent='로그인하지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요. ('+(e.code||'오류')+')'; }
   $('lgGo').disabled=false;
@@ -2069,8 +2099,63 @@ $('btnRec').onclick=function(){
   });
   $('recBody').innerHTML=h+'</table>';
   $('recTitle').textContent=(FB.name||'')+' 님의 최고 기록';
+  $('myId').textContent='내 ID: '+(FB.user?FB.user.uid:'');
   $('recModal').hidden=false;
 };
 $('recClose').onclick=function(){ $('recModal').hidden=true; };
+
+/* ================= ADMIN STATS ================= */
+function dayId(d){ return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0'); }
+function statInc(f){
+  if(!FB.ok) return;
+  var o={}; o[f]=firebase.firestore.FieldValue.increment(1);
+  FB.db.doc('stats/d_'+dayId(new Date())).set(o,{merge:true}).catch(function(){});
+}
+function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function tsDate(t){ return t && t.toDate ? t.toDate() : (typeof t==='number' ? new Date(t) : null); }
+function fmtDT(d){ return d ? (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0') : '-'; }
+var GNAME={stairs:'🪜 계단',balloon:'🎈 풍선',tower:'🧱 블록',match:'🔗 짝'};
+var KNAME={word:'영어',math:'수학',frac:'분수',clock:'시계',money:'돈',length:'길이',hanja:'한자'};
+function fmtScore(g,v){ return g==='match' ? fmtTime(v) : v+(g==='balloon'?'점':'층'); }
+async function openStats(){
+  $('statsModal').hidden=false; $('statsBody').textContent='불러오는 중…';
+  try{
+    var days=[]; for(var i=6;i>=0;i--){ var d=new Date(); d.setDate(d.getDate()-i); days.push(dayId(d)); }
+    var stats=await Promise.all(days.map(function(id){ return FB.db.doc('stats/d_'+id).get().then(function(x){ return x.exists?x.data():{}; }); }));
+    var us=await FB.db.collection('users').get(), users={};
+    us.forEach(function(x){ users[x.id]={name:x.data().name||'?', created:tsDate(x.data().createdAt), plays:0, last:null, kinds:{}}; });
+    var ps=await FB.db.collectionGroup('plays').get(), plays=[];
+    ps.forEach(function(x){ var uid=x.ref.parent.parent.id, d=x.data(), at=tsDate(d.at); plays.push({uid:uid, game:d.game, kind:d.kind, score:d.score, wrong:d.wrong, at:at});
+      var u=users[uid]; if(u){ u.plays++; if(at && (!u.last||at>u.last)) u.last=at; u.kinds[d.kind]=(u.kinds[d.kind]||0)+1; } });
+    plays.sort(function(a,b){ return (b.at||0)-(a.at||0); });
+    var today=stats[6], ucount=Object.keys(users).length, todayStart=new Date(); todayStart.setHours(0,0,0,0);
+    var todayActive=Object.keys(users).filter(function(k){ return users[k].last && users[k].last>=todayStart; }).length;
+    var h='<div class="kpis">'+
+      '<div class="kpi"><b>'+(today.visits||0)+'</b><span>오늘 방문(기기)</span></div>'+
+      '<div class="kpi"><b>'+(today.plays||0)+'</b><span>오늘 게임 판수</span></div>'+
+      '<div class="kpi"><b>'+todayActive+'</b><span>오늘 기록 남긴 사람</span></div>'+
+      '<div class="kpi"><b>'+ucount+'</b><span>전체 가입자</span></div></div>';
+    var mx=Math.max(1,Math.max.apply(null,stats.map(function(x){ return x.plays||0; })));
+    h+='<h3>최근 7일</h3><div class="tw"><table><tr><th>날짜</th><th>방문</th><th>로그인</th><th>게임 판수</th></tr>';
+    days.forEach(function(id,i){ var x=stats[i]; h+='<tr><td>'+id.slice(4,6)+'/'+id.slice(6)+'</td><td>'+(x.visits||0)+'</td><td>'+(x.logins||0)+'</td><td>'+(x.plays||0)+'<span class="bar" style="width:'+Math.round((x.plays||0)/mx*80)+'px"></span></td></tr>'; });
+    h+='</table></div>';
+    var kc={}; plays.forEach(function(p){ kc[p.kind]=(kc[p.kind]||0)+1; });
+    var kmax=Math.max(1,Math.max.apply(null,Object.keys(kc).map(function(k){ return kc[k]; }).concat([0])));
+    h+='<h3>과목별 인기 (로그인 기록 전체)</h3><div class="tw"><table><tr><th>과목</th><th>판수</th></tr>';
+    Object.keys(KNAME).forEach(function(k){ h+='<tr><td>'+KNAME[k]+'</td><td>'+(kc[k]||0)+'<span class="bar" style="width:'+Math.round((kc[k]||0)/kmax*120)+'px"></span></td></tr>'; });
+    h+='</table></div>';
+    h+='<h3>사용자별</h3><div class="tw"><table><tr><th>이름</th><th>가입</th><th>판수</th><th>마지막</th><th>많이 한 과목</th></tr>';
+    Object.keys(users).sort(function(a,b){ return (users[b].last||0)-(users[a].last||0); }).forEach(function(k){
+      var u=users[k], top=Object.keys(u.kinds).sort(function(a,b){ return u.kinds[b]-u.kinds[a]; })[0];
+      h+='<tr><td>'+esc(u.name)+'</td><td>'+(u.created?(u.created.getMonth()+1)+'/'+u.created.getDate():'-')+'</td><td>'+u.plays+'</td><td>'+fmtDT(u.last)+'</td><td>'+(top?KNAME[top]||top:'-')+'</td></tr>'; });
+    h+='</table></div>';
+    h+='<h3>최근 기록 30개</h3><div class="tw"><table><tr><th>시간</th><th>이름</th><th>게임</th><th>과목</th><th>기록</th><th>틀림</th></tr>';
+    plays.slice(0,30).forEach(function(p){ var u=users[p.uid]; h+='<tr><td>'+fmtDT(p.at)+'</td><td>'+esc(u?u.name:'?')+'</td><td>'+(GNAME[p.game]||esc(p.game))+'</td><td>'+(KNAME[p.kind]||esc(p.kind))+'</td><td>'+fmtScore(p.game,+p.score||0)+'</td><td>'+(p.wrong||0)+'</td></tr>'; });
+    h+='</table></div><p class="muted">방문 수는 기기 기준으로 하루 한 번만 셉니다. 게임 판수는 손님 포함, 사용자별·최근 기록은 로그인한 사람만 나옵니다.</p>';
+    $('statsBody').innerHTML=h;
+  }catch(e){ $('statsBody').textContent='통계를 불러오지 못했어요. Firestore 보안 규칙을 확인해 주세요. ('+(e.code||e.message||'오류')+')'; }
+}
+$('btnStats').onclick=openStats;
+$('statsClose').onclick=function(){ $('statsModal').hidden=true; };
 renderAcct(); fbInit();
 </script>
