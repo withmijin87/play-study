@@ -1080,7 +1080,7 @@ function mFinish(quit){
   MG.over=true;
   var sec=Math.max(1,Math.round((performance.now()-MG.t0)/1000)), best=getBest(), rec=!quit && (!best || sec<best);
   if(rec) setBest(sec);
-  if(!quit) saveScore('match', MG.kind, sec, MG.mistakes);
+  if(!quit) saveScore('match', MG.kind, sec, MG.mistakes); else if($('evNote')) $('evNote').hidden=true;
   $('stampBox').innerHTML = rec ? '<div class="stamp"><span>신기록!</span><em>참 잘했어요</em></div>'
                           : (!quit && MG.mistakes===0) ? '<div class="stamp"><span>참</span><em style="font-size:32px">잘했어요</em></div>' : '';
   $('resFloor').innerHTML = quit ? MG.round-1+'<small>판 완료</small>' : fmtTime(sec);

@@ -7,6 +7,7 @@ function fbInit(){
     FB.auth=firebase.auth(); FB.db=firebase.firestore(); FB.ok=true;
     FB.auth.onAuthStateChanged(onUser);
     (function(){ var k='visit_'+dayId(new Date()); var seen=false; try{ seen=!!localStorage.getItem(k); localStorage.setItem(k,'1'); }catch(e){} if(!seen) statInc('visits'); })();
+    if(typeof evWatch==='function') evWatch();
     FB.db.doc('config/site').onSnapshot(function(d){ if(d.exists && d.data().skin) applySkin(d.data().skin); }, function(){});
   }catch(e){ FB.ok=false; }
 }
@@ -36,6 +37,7 @@ async function onUser(u){
       try{ var ad=await FB.db.doc('admins/'+u.uid).get(); FB.isAdmin=ad.exists; }catch(e){ FB.isAdmin=false; }
     }catch(e){}
   }else{ FB.name=''; FB.isAdmin=false; }
+  if(typeof evLoad==='function') evLoad();
   renderAcct(); if(!$('start').hidden) syncKind();
 }
 function renderAcct(){
@@ -48,11 +50,12 @@ function renderAcct(){
 }
 function saveScore(game, kind, score, wrong){
   statInc('plays');
-  if(!FB.ok || !FB.user || !game || !kind) return;
+  if(!FB.ok || !FB.user || !game || !kind){ if(typeof evOnScore==='function') evOnScore(false); return; }
   var id=game+'_'+kind, prev=FB.bests[id]||{}, better = game==='match' ? (!prev.best || score<prev.best) : score>(prev.best||0);
   var inc=firebase.firestore.FieldValue.increment(1), now=firebase.firestore.FieldValue.serverTimestamp();
   var data={game:game, kind:kind, plays:inc, last:score, updatedAt:now}; if(better) data.best=score;
   FB.bests[id]={game:game, kind:kind, best: better?score:prev.best, plays:(prev.plays||0)+1, last:score};
+  if(typeof evOnScore==='function') evOnScore(better && score>0);
   var base='users/'+FB.user.uid;
   FB.db.doc(base+'/scores/'+id).set(data,{merge:true}).catch(function(){});
   FB.db.collection(base+'/plays').add({game:game, kind:kind, score:score, wrong:wrong||0, at:now}).catch(function(){});
@@ -142,9 +145,11 @@ async function openStats(){
     h+='<h3>최근 기록 30개</h3><div class="tw"><table><tr><th>시간</th><th>이름</th><th>게임</th><th>과목</th><th>기록</th><th>틀림</th></tr>';
     plays.slice(0,30).forEach(function(p){ var u=users[p.uid]; h+='<tr><td>'+fmtDT(p.at)+'</td><td>'+esc(u?u.name:'?')+'</td><td>'+(GNAME[p.game]||esc(p.game))+'</td><td>'+(KNAME[p.kind]||esc(p.kind))+'</td><td>'+fmtScore(p.game,+p.score||0)+'</td><td>'+(p.wrong||0)+'</td></tr>'; });
     h+='</table></div><p class="muted">방문 수는 기기 기준으로 하루 한 번만 셉니다. 게임 판수는 손님 포함, 사용자별·최근 기록은 로그인한 사람만 나옵니다.</p>';
+    if(typeof evAdminHTML==='function') h=(await evAdminHTML(users))+h;
     $('statsBody').innerHTML=h;
+    if(typeof evAdminBind==='function') evAdminBind();
   }catch(e){ $('statsBody').textContent='통계를 불러오지 못했어요. Firestore 보안 규칙을 확인해 주세요. ('+(e.code||e.message||'오류')+')'; }
 }
 $('btnStats').onclick=openStats;
 $('statsClose').onclick=function(){ $('statsModal').hidden=true; };
-renderAcct(); fbInit();
+

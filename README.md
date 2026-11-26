@@ -13,7 +13,8 @@
 | js/data-hanja.js | 한자 목록 |
 | js/game.js | 게임·과목 문제 생성 |
 | js/skin.js | 디자인 전환 |
-| js/login.js | 로그인 · 점수 저장 · 관리자 통계 |
+| js/login.js
+- js/event.js : 크리스마스 복권 이벤트 (신기록 → 복권, 당첨 공유 페이지) | 로그인 · 점수 저장 · 관리자 통계 |
 | assets/img/ | 단어 그림 (단어.jpg) |
 | assets/audio/ | 단어 음성 (단어.mp3) |
 
