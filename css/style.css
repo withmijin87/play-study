@@ -351,10 +351,11 @@ html.xm.xm.xm{--bg:#efe3c4; --panel:#fbf4e1; --ink:#1b1a17; --muted:#5b5446; --l
 @media (prefers-color-scheme: dark){html.xm.xm.xm{--bg:#efe3c4; --panel:#fbf4e1; --ink:#1b1a17; --muted:#5b5446; --line:#1b1a17; --sun:#c8312f; --sun-ink:#fff7e6; --teal:#1f5a47; --teal-soft:#dcebdc; --ok:#2e7d4f; --ok-soft:#dcefd9; --ng:#c8312f; --ng-soft:#f7d9d4; --stamp:#c8312f; --shadow:3px 3px 0 #1b1a17; color-scheme:light}}
 html.xm.xm.xm{--bg:#efe3c4; --panel:#fbf4e1; --ink:#1b1a17; --muted:#5b5446; --line:#1b1a17; --sun:#c8312f; --sun-ink:#fff7e6; --teal:#1f5a47; --teal-soft:#dcebdc; --ok:#2e7d4f; --ok-soft:#dcefd9; --ng:#c8312f; --ng-soft:#f7d9d4; --stamp:#c8312f; --shadow:3px 3px 0 #1b1a17; color-scheme:light}
 html.xm body{background:var(--bg)}
-html.xm body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
+html.xm body::after{content:"";position:fixed;left:0;right:0;top:-240px;height:calc(100% + 240px);pointer-events:none;z-index:50;
   background-image:radial-gradient(circle,#fff 0 1.8px,transparent 2.4px),radial-gradient(circle,#fff 0 1.2px,transparent 1.8px),radial-gradient(circle,rgba(255,255,255,.8) 0 2.4px,transparent 3px);
-  background-size:97px 113px,151px 167px,211px 239px;background-position:0 0,43px 61px,120px 20px;opacity:.75;animation:snowfall 16s linear infinite}
-@keyframes snowfall{to{background-position:24px 113px,-30px 334px,60px 478px}}
+  background-size:97px 120px,151px 240px,211px 240px;background-position:0 0,43px 61px,120px 20px;opacity:.75;
+  will-change:transform;transform:translate3d(0,0,0);animation:snowfall 18s linear infinite}
+@keyframes snowfall{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,240px,0)}}
 html.xm .screen,html.xm .quiz,html.xm .bprompt,html.xm .mcard,html.xm .tabs{border:2px solid var(--ink)!important;border-radius:18px 14px 20px 12px/14px 20px 12px 18px!important}
 html.xm .screen{box-shadow:4px 4px 0 var(--ink);background:var(--panel)}
 html.xm .hero,html.xm .sky,html.xm .field{border:2px solid var(--ink);border-radius:18px 14px 20px 12px/14px 20px 12px 18px}

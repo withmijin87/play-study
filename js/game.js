@@ -301,7 +301,7 @@ requestAnimationFrame(heroLoop);
 /* ---------- game state ---------- */
 var G = null;
 function newGame(){
-  var pool = WORDS.filter(function(x){ return cfg.letters.has(GL(x)); });
+  var pool = WORDS.filter(function(x){ return cfg.letters.has(GL(x)); }); if(cfg.kind==='word') preloadWords(pool);
   G = {
     kind:cfg.kind, pool:pool, deck:[], last:null,
     world:{steps:makeSteps(80), camF:0, camX:0, p:{x:0,f:0,jump:0,face:1,mood:'',rot:0}},
@@ -1003,7 +1003,22 @@ function pairItem(kind){
   var sv2=GSET.length.t; GSET.length.t=2; var g3=GEN.length('x'); GSET.length.t=sv2;
   return {key:g3.text, uniq:String(g3.cm), a:'<span class="mt-ko">'+g3.pa+'</span>', b:'<span class="mt-ko">'+g3.pb+'</span>', rec:g3};
 }
+/* 고른 단어의 그림·음성을 6개씩 차례로 미리 받아 둠 (한꺼번에 받으면 오히려 느려짐) */
+var PRELOADED={}, PQ=[], pumping=false;
+function preloadWords(pool){
+  pool.forEach(function(w){ if(!PRELOADED[w.w]){ PRELOADED[w.w]=1; PQ.push(w); } });
+  if(pumping) return; pumping=true;
+  (function step(){
+    var batch=PQ.splice(0,6); if(!batch.length){ pumping=false; return; }
+    Promise.all(batch.map(function(w){
+      var a=new Promise(function(r){ var im=new Image(); im.onload=im.onerror=r; im.src=IMG[w.w]; });
+      var b=AUDIO[w.w] ? fetch(AUDIO[w.w]).catch(function(){}) : null;
+      return Promise.all([a,b]);
+    })).then(function(){ setTimeout(step,60); });
+  })();
+}
 function newMatch(){
+  if(cfg.kind==='word') preloadWords(WORDS.filter(function(x){ return cfg.letters.has(GL(x)); }));
   if(MG) MG.token++;
   MG={kind:cfg.kind, round:0, rounds:3, per:5, mistakes:0, t0:performance.now(), sel:null, done:0, wrong:[], token:(MG?MG.token:0)+1, over:false};
   $('mNote').textContent=''; $('mNote').className='bnote';
@@ -1133,7 +1148,7 @@ function bQuestion(){
   return q;
 }
 function newBalloon(){
-  var pool = WORDS.filter(function(x){ return cfg.letters.has(GL(x)); });
+  var pool = WORDS.filter(function(x){ return cfg.letters.has(GL(x)); }); if(cfg.kind==='word') preloadWords(pool);
   if(B) B.token++;
   B={kind:cfg.kind, pool:pool, deck:[], hearts:3, score:0, correct:0, combo:0, maxCombo:0, wrong:[], balloons:[], q:null, resolved:false,
      over:false, token:(B?B.token:0)+1, lastTs:performance.now()};

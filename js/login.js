@@ -12,6 +12,7 @@ function fbInit(){
 }
 async function sha(t){ var b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return Array.from(new Uint8Array(b)).map(function(x){ return x.toString(16).padStart(2,'0'); }).join(''); }
 function validBirth(b){
+  if(/^\d{4}$/.test(b)){ var mm=+b.slice(0,2), dd=+b.slice(2,4), t=new Date(2024,mm-1,dd); return mm>=1 && mm<=12 && t.getMonth()===mm-1 && t.getDate()===dd; }
   if(!/^\d{8}$/.test(b)) return false;
   var y=+b.slice(0,4), m=+b.slice(4,6), d=+b.slice(6,8), dt=new Date(y,m-1,d);
   return y>=1900 && y<=new Date().getFullYear() && dt.getMonth()===m-1 && dt.getDate()===d;
@@ -67,7 +68,7 @@ $('lgBirth').addEventListener('input', function(){ this.value=this.value.replace
 $('lgGo').onclick=async function(){
   var name=$('lgName').value.trim().replace(/\s+/g,''), birth=$('lgBirth').value.trim();
   if(!name){ $('lgErr').textContent='이름을 써 주세요.'; return; }
-  if(!validBirth(birth)){ $('lgErr').textContent='생년월일 8자리를 확인해 주세요. 예) 20190315'; return; }
+  if(!validBirth(birth)){ $('lgErr').textContent='생일을 월일 4자리로 써 주세요. 예) 2월 28일 → 0228'; return; }
   $('lgGo').disabled=true; $('lgErr').textContent='들어가는 중…';
   try{ await doLogin(name,birth); statInc('logins'); $('loginModal').hidden=true; $('lgBirth').value='';
     if(FB.isNew){ FB.isNew=false; renderAcct(); } }
