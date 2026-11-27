@@ -4,6 +4,7 @@ var EV={cfg:null, st:null, busy:false};
 function evRef(){ return FB.db.doc('users/'+FB.user.uid+'/event/'+EV_ID); }
 function evActive(){
   var c=EV.cfg; if(!c || !c.on) return false;
+  if(FB.user && (c.excluded||[]).indexOf(FB.user.uid)>=0) return false;
   if(c.end){ var e=new Date(c.end+'T23:59:59'); if(!isNaN(e) && new Date()>e) return false; }
   return true;
 }
@@ -37,16 +38,32 @@ function evRender(){
   if(!$('evModal').hidden && $('evScratch').hidden) evDraw();
 }
 
+/* 손님: 게임 끝나면 로그인 유도 (로그인하면 방금 기록도 저장) */
+function evGuestNudge(){
+  var note=$('evNote'); if(!note) return;
+  note.classList.remove('ticket'); note.classList.add('nudge');
+  note.innerHTML='<div class="ng"><span class="ng-ic">🔐</span><div class="ng-t"><b>로그인하고 기록 지키기!</b>'+
+    '<span>지금 로그인하면 <u>방금 기록도 저장</u>돼요.<br>이름이랑 생일 4자리면 끝!</span>'+
+    (evActive()?'<span class="ng-ev">🎟️ 신기록 깨면 <b>행운의 즉석복권</b>도 받아요!</span>':'')+
+    '</div></div><div class="ng-btn">로그인하기 ▶</div>';
+  note.onclick=function(){ openLogin(); };
+  note.hidden=false;
+}
 /* 게임 끝 → 최고 기록이면 복권 1장 */
 function evOnScore(isBest){
   var note=$('evNote'); if(!note) return;
-  note.hidden=true;
+  note.hidden=true; note.classList.remove('nudge');
   if(!evActive() || !isBest) return;
-  if(!FB.user){ note.innerHTML='🎟️ 신기록이에요! <b>로그인</b>하면 크리스마스 복권을 받을 수 있어요.'; note.onclick=null; note.hidden=false; return; }
   if(!EV.st) return;
   EV.st.earned=(EV.st.earned||0)+1;
   evRef().set({earned:firebase.firestore.FieldValue.increment(1)},{merge:true}).catch(function(){});
-  note.innerHTML='🎟️ 신기록 복권이 나왔어요! <b>눌러서 긁어 보기 ✨</b>';
+  var no=String(1000+Math.floor(Math.random()*9000));
+  note.innerHTML='<div class="lt"><i class="lt-sp s1">✦</i><i class="lt-sp s2">★</i><i class="lt-sp s3">✦</i><i class="lt-sp s4">★</i>'+
+    '<div class="lt-top"><span>LUCKY</span><b>🍀 행운의 즉석복권 🍀</b><span>No.'+no+'</span></div>'+
+    '<div class="lt-mid"><span class="lt-coin">🪙</span><div class="lt-silver"><em>여기를 긁어요!</em></div><span class="lt-gift">🎁</span></div>'+
+    '<div class="lt-bot">🎉 신기록 보상! <b>눌러서 긁어 보기 ✨</b></div></div>';
+  note.classList.add('ticket');
+  if(typeof sfx==='function') setTimeout(function(){ sfx('ok'); }, 350);
   note.onclick=function(){ note.hidden=true; evOpen(true); };
   note.hidden=false;
   evRender();
@@ -121,8 +138,11 @@ function evScratchShow(r){
   var x=cv.getContext('2d'); x.globalCompositeOperation='source-over';
   var g=x.createLinearGradient(0,0,cv.width,cv.height); g.addColorStop(0,'#c9ccd1'); g.addColorStop(.5,'#eef0f2'); g.addColorStop(1,'#aeb3ba');
   x.fillStyle=g; x.fillRect(0,0,cv.width,cv.height);
-  x.fillStyle='#5b6068'; x.textAlign='center'; x.textBaseline='middle';
-  x.font=(20*dpr)+'px Jua, sans-serif'; x.fillText('🎄 손가락으로 긁어 보세요 🎄', cv.width/2, cv.height/2);
+  x.textAlign='center'; x.textBaseline='middle';
+  x.fillStyle='rgba(255,255,255,.55)'; x.font=(14*dpr)+'px sans-serif';
+  for(var yy=12*dpr; yy<cv.height; yy+=26*dpr) for(var xx=(yy/dpr%52?14:40)*dpr; xx<cv.width; xx+=52*dpr) x.fillText('★', xx, yy);
+  x.fillStyle='#4a4f57'; x.font=(30*dpr)+'px Jua, sans-serif'; x.fillText('🍀 LUCKY 🍀', cv.width/2, cv.height/2-18*dpr);
+  x.font=(18*dpr)+'px Jua, sans-serif'; x.fillText('손가락으로 쓱쓱 긁어 보세요!', cv.width/2, cv.height/2+20*dpr);
   x.globalCompositeOperation='destination-out'; x.lineCap='round'; x.lineJoin='round'; x.lineWidth=44*dpr;
   var down=false, last=null, moves=0, revealed=false;
   function pt(e){ var b=cv.getBoundingClientRect(); return {x:(e.clientX-b.left)*dpr, y:(e.clientY-b.top)*dpr}; }

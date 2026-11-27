@@ -311,7 +311,7 @@ function newGame(){
   };
   $('floorN').textContent='0'; $('combo').textContent=''; $('bannerBox').innerHTML='';
   var tw=cfg.game==='tower'; $('gauge').hidden=tw; $('tHearts').hidden=!tw; drawTHearts(3);
-  invReset(cfg.game);
+  invReset(cfg.game); rvStart();
   show('game'); nextQ(); G.lastTs=performance.now();
   requestAnimationFrame(loop);
 }
@@ -342,9 +342,9 @@ function makeMath(){
   return {math:true, text:a+' '+sym+' '+b, a:a, b:b, sym:sym, r:r, choices:shuffle([r,cand[0],cand[1]])};
 }
 function nextMath(){
-  var q=makeMath(), tries=0;
-  while(G.last && G.last.text===q.text && tries++<5) q=makeMath();
-  G.last=q; G.q={m:q, type:3}; G.locked=false;
+  var q=rvMake('math',makeMath), tries=0;
+  while(!q._rv && G.last && G.last.text===q.text && tries++<5) q=rvMake('math',makeMath);
+  G.last=q; G.q={m:q, type:3}; G.locked=false; rvTag(!!q._rv, $('quiz'));
   $('pic').hidden=true; $('qInfo').hidden=true; $('expr').hidden=false;
   $('expr').innerHTML='<span>'+q.a+'</span><span class="o">'+q.sym+'</span><span>'+q.b+'</span><span class="o">=</span><span class="qm" id="qm">?</span>';
   var ans=$('answers'); ans.innerHTML='';
@@ -561,9 +561,9 @@ function genHanja(QM){
 }
 var GEN = {clock:genClock, money:genMoney, length:genLength, hanja:genHanja};
 function nextGeneric(){
-  var g=GEN[G.kind]('qm'), tries=0;
-  while(G.last && G.last.text===g.text && tries++<6) g=GEN[G.kind]('qm');
-  G.last=g; G.q={m:g, type:3}; G.locked=false;
+  var gf=function(){ return GEN[G.kind]('qm'); }, g=rvMake(G.kind,gf), tries=0;
+  while(!g._rv && G.last && G.last.text===g.text && tries++<6) g=rvMake(G.kind,gf);
+  G.last=g; G.q={m:g, type:3}; G.locked=false; rvTag(!!g._rv, $('quiz'));
   $('pic').hidden=true; $('qInfo').hidden=true; $('expr').hidden=false;
   var ex=$('expr'); ex.className='fexpr'; ex.innerHTML=g.prompt;
   var ans=$('answers'); ans.innerHTML='';
@@ -647,9 +647,9 @@ function makeFrac(){
           choices:shuffle([[k,n]].concat(picks))};
 }
 function nextFrac(){
-  var q=makeFrac(), tries=0;
-  while(G.last && G.last.r===q.r && G.last.type===q.type && tries++<5) q=makeFrac();
-  G.last=q; G.q={m:q, type:3}; G.locked=false;
+  var q=rvMake('frac',makeFrac), tries=0;
+  while(!q._rv && G.last && G.last.r===q.r && G.last.type===q.type && tries++<5) q=rvMake('frac',makeFrac);
+  G.last=q; G.q={m:q, type:3}; G.locked=false; rvTag(!!q._rv, $('quiz'));
   $('pic').hidden=true; $('qInfo').hidden=true; $('expr').hidden=false;
   var ex=$('expr'); ex.className='fexpr';
   var ans=$('answers'); ans.innerHTML='';
@@ -693,9 +693,9 @@ function nextQ(){
   if(G.kind==='math'){ nextMath(); return; }
   $('pic').hidden=false; $('qInfo').hidden=false; $('expr').hidden=true;
   if(!G.deck.length){ G.deck = shuffle(G.pool); if(G.deck[0]===G.last && G.deck.length>1) G.deck.push(G.deck.shift()); }
-  var w = G.deck.shift(); G.last=w;
+  var rw=rvWord(G.pool), w = rw ? rw.w : G.deck.shift(); G.last=w;
   var type = cfg.mode===3 ? [1,2,4][Math.floor(Math.random()*3)] : cfg.mode;
-  G.q = {w:w, type:type}; G.locked=false;
+  G.q = {w:w, type:type, _rv:rw&&rw.it}; G.locked=false; rvTag(!!rw, $('quiz'));
   $('picImg').src = IMG[w.w]||''; $('picImg').alt = type===4 ? '' : w.ko;
   $('pic').classList.toggle('listen', type===4);
   $('qKo').textContent = type===4 ? '' : w.ko; $('qKo').style.fontSize = type===4 ? '15px' : '';
@@ -743,6 +743,7 @@ function pick(ok, btn){
   var isM = G.kind!=='word', w=isM?null:G.q.w, mq=isM?G.q.m:null, tk=G.token;
   if(ok){
     btn.classList.add('ok'); sfx('ok'); if(!isM) speak(w.w);
+    rvRight(G.kind, isM?mq:w, isM?mq._rv:G.q._rv);
     G.combo++; G.maxCombo=Math.max(G.maxCombo,G.combo);
     if(G.combo%5===0) giveItem();
     G.time = Math.min(100, G.time + 26 + Math.min(10, G.combo));
@@ -750,7 +751,7 @@ function pick(ok, btn){
     if(G.combo>=3){ var c=$('combo'); c.textContent=G.combo+' COMBO!'; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); }
     setTimeout(function(){ if(tk===G.token && !G.over) nextQ(); }, 380);
   }else{
-    btn.classList.add('ng'); sfx('ng');
+    btn.classList.add('ng'); sfx('ng'); rvWrong(G.kind, isM?mq:w);
     G.combo=0; $('combo').textContent='';
     if(!useShield()){ G.time = Math.max(0, G.time - 18); if(G.mode==='tower') towerHit(); }
     var wk = isM ? mq : w; if(!G.wrong.some(function(x){ return isM ? (x.text===mq.text && x.r===mq.r) : x===w; })) G.wrong.push(wk);
@@ -882,6 +883,7 @@ function gameOver(){
 function finish(){
   var best=getBest(), rec = G.floor>best && G.floor>0;
   if(rec) setBest(G.floor);
+  rvFlush(); rvResult();
   saveScore(G.mode, G.kind, G.floor, G.wrong.length);
   $('stampBox').innerHTML = rec ? '<div class="stamp"><span>신기록!</span><em>참 잘했어요</em></div>'
                           : G.floor>=20 ? '<div class="stamp"><span>참</span><em style="font-size:32px">잘했어요</em></div>' : '';
@@ -1022,7 +1024,7 @@ function newMatch(){
   if(MG) MG.token++;
   MG={kind:cfg.kind, round:0, rounds:3, per:5, mistakes:0, t0:performance.now(), sel:null, done:0, wrong:[], token:(MG?MG.token:0)+1, over:false};
   $('mNote').textContent=''; $('mNote').className='bnote';
-  show('mgame'); invReset('match'); mRound();
+  show('mgame'); invReset('match'); rvStart(); mRound();
   var tk=MG.token;
   (function tick(){ if(!MG || MG.token!==tk || MG.over) return; $('mTime').textContent=fmtTime((performance.now()-MG.t0)/1000); setTimeout(tick, 250); })();
 }
@@ -1080,6 +1082,7 @@ function mFinish(quit){
   MG.over=true;
   var sec=Math.max(1,Math.round((performance.now()-MG.t0)/1000)), best=getBest(), rec=!quit && (!best || sec<best);
   if(rec) setBest(sec);
+  rvResult();
   if(!quit) saveScore('match', MG.kind, sec, MG.mistakes); else if($('evNote')) $('evNote').hidden=true;
   $('stampBox').innerHTML = rec ? '<div class="stamp"><span>신기록!</span><em>참 잘했어요</em></div>'
                           : (!quit && MG.mistakes===0) ? '<div class="stamp"><span>참</span><em style="font-size:32px">잘했어요</em></div>' : '';
@@ -1102,9 +1105,9 @@ function bQuestion(){
   var q={};
   if(cfg.kind==='word'){
     if(!B.deck.length){ B.deck=shuffle(B.pool); if(B.deck[0]===B.lastW && B.deck.length>1) B.deck.push(B.deck.shift()); }
-    var w=B.deck.shift(); B.lastW=w;
+    var rw=rvWord(B.pool), w=rw ? rw.w : B.deck.shift(); B.lastW=w;
     var type = cfg.mode===3 ? [1,2,4][Math.floor(Math.random()*3)] : cfg.mode;
-    q={word:w, type:type, key:w.w, rec:w, say:w.w};
+    q={word:w, type:type, key:w.w, rec:w, say:w.w, _rv:rw&&rw.it};
     if(type===1){
       q.prompt='<img class="bimg" data-say="1" src="'+(IMG[w.w]||'')+'" alt=""><div class="bcol"><div class="bt">그림에 맞는 단어 풍선을 터뜨려요</div><div class="bko">'+w.ko+'</div></div>';
       q.choices=shuffle([w].concat(wordDistractors(w,2))).map(function(o){ return {key:o.w, html:'<span class="bl-t" style="font-size:'+(o.w.length>7?17:o.w.length>5?20:24)+'px">'+o.w+'</span>'}; });
@@ -1119,21 +1122,21 @@ function bQuestion(){
       q.autoSay=true;
     }
   }else if(GEN[cfg.kind]){
-    var g=GEN[cfg.kind]('bqm'), t3=0; while(B.lastG && B.lastG.text===g.text && t3++<6) g=GEN[cfg.kind]('bqm'); B.lastG=g;
-    q={key:g.r, rec:g, gen:g, prompt:g.prompt};
+    var bgf=function(){ return GEN[cfg.kind]('bqm'); }, g=rvMake(cfg.kind,bgf), t3=0; while(!g._rv && B.lastG && B.lastG.text===g.text && t3++<6) g=rvMake(cfg.kind,bgf); B.lastG=g;
+    q={key:g.r, rec:g, gen:g, prompt:g.prompt, _rv:g._rv};
     q.choices=g.choices.map(function(c){
       if(c.pic) return {key:c.key, html:'<span class="bl-svg clk">'+c.html.replace('class="cpic gpic"','class="gpic" style="width:100%;height:auto"')+'</span>'};
       if(c.hz) return {key:c.key, html:c.html};
       var L=c.html.length; return {key:c.key, html:'<span class="bl-k" style="font-size:'+(L>8?15:L>6?17:L>4?20:23)+'px">'+c.html+'</span>'};
     });
   }else if(cfg.kind==='math'){
-    var m=makeMath(), t=0; while(B.lastM && B.lastM.text===m.text && t++<5) m=makeMath(); B.lastM=m;
-    q={key:String(m.r), rec:m, math:m};
+    var m=rvMake('math',makeMath), t=0; while(!m._rv && B.lastM && B.lastM.text===m.text && t++<5) m=rvMake('math',makeMath); B.lastM=m;
+    q={key:String(m.r), rec:m, math:m, _rv:m._rv};
     q.prompt='<div class="expr"><span>'+m.a+'</span><span class="o">'+m.sym+'</span><span>'+m.b+'</span><span class="o">=</span><span class="qm" id="bqm">?</span></div>';
     q.choices=m.choices.map(function(v){ return {key:String(v), html:'<span class="bl-t" style="font-size:'+(String(v).length>2?28:34)+'px">'+v+'</span>'}; });
   }else{
-    var f=makeFrac(), t2=0; while(B.lastF && B.lastF.r===f.r && t2++<5) f=makeFrac(); B.lastF=f;
-    q={key:f.r, rec:f, frac:f};
+    var f=rvMake('frac',makeFrac), t2=0; while(!f._rv && B.lastF && B.lastF.r===f.r && t2++<5) f=rvMake('frac',makeFrac); B.lastF=f;
+    q={key:f.r, rec:f, frac:f, _rv:f._rv};
     if(f.type===3){
       q.prompt=f.promptHTML('bqm');
       q.choices=f.choices.map(function(c){ return {key:c.key, html: f.form==='num' ? '<span class="bl-t" style="font-size:34px">'+c.key+'</span>' : '<span class="bl-t">'+c.html+'</span>'}; });
@@ -1155,7 +1158,7 @@ function newBalloon(){
   $('field').querySelectorAll('.balloon,.burst').forEach(function(e){ e.remove(); });
   $('bScore').textContent='0'; $('bCombo').textContent='';
   $('bNote').textContent=''; $('bNote').className='bnote'; $('field').classList.remove('fever'); $('bPrompt').classList.remove('fever');
-  drawHearts(); invReset('balloon'); show('bgame');
+  drawHearts(); invReset('balloon'); rvStart(); show('bgame');
   setTimeout(function(){ bWave(); requestAnimationFrame(bLoop); }, 50);
 }
 function drawHearts(){ var h=''; for(var i=0;i<3;i++) h+='<span class="'+(i<B.hearts?'':'off')+'">❤️</span>'; $('hearts').innerHTML=h; }
@@ -1169,7 +1172,7 @@ function bDuration(){
 function bWave(){
   if(B.over) return;
   var q=bQuestion(); B.q=q; B.resolved=false;
-  $('bPrompt').innerHTML=q.prompt;
+  $('bPrompt').innerHTML=q.prompt; rvTag(!!q._rv, $('bPrompt'));
   $('bPrompt').querySelectorAll('[data-say]').forEach(function(e){ e.onclick=function(){ speak(q.say); }; });
   if(q.autoSay){ var tk=B.token; setTimeout(function(){ if(B.token===tk && B.q===q) speak(q.say); }, 250); }
   var field=$('field'), W=field.clientWidth, H=field.clientHeight;
@@ -1211,6 +1214,7 @@ function bShowAnswer(){
 }
 function bRecordWrong(){
   var r=B.q.rec, isM=!!(B.q.math||B.q.frac);
+  if(!B.q._wr){ B.q._wr=1; rvWrong(B.kind, r); }
   if(!B.wrong.some(function(x){ return isM ? (x.text===r.text && x.r===r.r) : x===r; })) B.wrong.push(r);
 }
 function buzz(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
@@ -1238,7 +1242,7 @@ function bTap(b){
     var pts = 10 + Math.min(10, (B.combo-1)*2) + (b.gold?30:0);
     B.score+=pts; $('bScore').textContent=B.score;
     burst(b, b.gold ? '+'+pts+' ✨' : '+'+pts); bKill(b);
-    bShowAnswer();
+    bShowAnswer(); rvRight(B.kind, B.q.rec, B.q._rv);
     if(B.q.word) speak(B.q.word.w);
     if(B.combo>=3){ var c=$('bCombo'); c.textContent=B.combo+' COMBO!'; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); }
     if(B.correct%5===0){ var n=$('bNote'); n.textContent='풍선이 빨라져요!'; n.classList.remove('show'); void n.offsetWidth; n.classList.add('show'); sfx('lvl'); }
@@ -1343,6 +1347,7 @@ function bGameOver(){
 function bFinish(){
   var best=getBest(), rec = B.score>best && B.score>0;
   if(rec) setBest(B.score);
+  rvFlush(); rvResult();
   saveScore('balloon', B.kind, B.score, B.wrong.length);
   $('stampBox').innerHTML = rec ? '<div class="stamp"><span>신기록!</span><em>참 잘했어요</em></div>'
                           : B.correct>=20 ? '<div class="stamp"><span>참</span><em style="font-size:32px">잘했어요</em></div>' : '';

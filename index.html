@@ -8,9 +8,12 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="놀이 공부방">
 <title>놀이 공부방</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Nunito:wght@800;900&family=Noto+Serif+KR:wght@700&family=Gochi+Hand&display=swap">
 <style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<link rel="stylesheet" href="css/style.css?v=3">
+<link rel="stylesheet" href="css/style.css?v=11">
 </head>
 <body>
 <div class="app">
@@ -22,7 +25,7 @@
       <button class="gtab" role="tab" data-g="tower" aria-selected="false">🧱<br>블록</button>
       <button class="gtab" role="tab" data-g="match" aria-selected="false">🔗<br>짝 찾기</button>
     </div>
-    <div class="acct" id="acct"><span class="acct-name" id="acctName">👤 손님</span><button class="acct-btn ev-btn" id="btnEvent" hidden>🎁</button><button class="acct-btn" id="btnStats" hidden>📈 통계</button><button class="acct-btn" id="btnRec" hidden>📊 내 기록</button><button class="acct-btn" id="btnLogin">로그인</button></div>
+    <div class="acct" id="acct"><span class="acct-name" id="acctName">👤 손님</span><button class="acct-btn ev-btn" id="btnEvent" hidden>🎁</button><button class="acct-btn" id="btnRv" title="오답노트">📒</button><button class="acct-btn inst-btn" id="btnInstall" hidden>📲 앱 설치</button><button class="acct-btn" id="btnStats" hidden>📈 통계</button><button class="acct-btn" id="btnRec" hidden>📊 내 기록</button><button class="acct-btn" id="btnLogin">로그인</button></div>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" data-k="word" aria-selected="true">영어</button>
       <button class="tab" role="tab" data-k="math" aria-selected="false">수학</button>
@@ -152,6 +155,7 @@
     <div id="stampBox"></div>
     <div class="res-floor" id="resFloor"></div>
     <div class="res-sub" id="resSub"></div>
+    <div class="rv-note" id="rvNote" hidden></div>
     <button class="ev-note" id="evNote" hidden></button>
     <div class="wrongs-t" id="wrongsT"></div>
     <div class="wrongs" id="wrongs"></div>
@@ -166,8 +170,14 @@
   <div class="mbox">
     <h2>로그인</h2>
     <p class="msub">처음이면 바로 가입돼요. 다음부터는 같은 이름과 생일로 들어와요.</p>
-    <label class="fld">이름 (별명도 돼요)<input id="lgName" maxlength="10" autocomplete="off"></label>
-    <label class="fld">생일 4자리 (월일)<input id="lgBirth" inputmode="numeric" maxlength="8" placeholder="예) 0228" autocomplete="off"></label>
+    <label class="fld">이름 (별명도 가능)<input id="lgName" maxlength="10" autocomplete="off"></label>
+    <div class="fld">생일
+      <div class="lg-bd" id="lgBdSel"><select id="lgMon"><option value="">월</option><option value="01">1월</option><option value="02">2월</option><option value="03">3월</option><option value="04">4월</option><option value="05">5월</option><option value="06">6월</option><option value="07">7월</option><option value="08">8월</option><option value="09">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option></select><select id="lgDay"><option value="">일</option></select></div>
+      <input id="lgBirth" inputmode="numeric" maxlength="8" placeholder="예) 0228" autocomplete="off" hidden>
+      <button type="button" class="ev-link lg-sw" id="lgBdSw">숫자로 직접 입력</button>
+    </div>
+    <div class="fld">몇 살이에요?<div class="lg-ages" id="lgAges"><button type="button" data-age="6">6살</button><button type="button" data-age="7">7살</button><button type="button" data-age="8">8살</button><button type="button" data-age="9">9살</button><button type="button" data-age="10">10살</button><button type="button" data-age="11">11살+</button><button type="button" data-age="99">어른</button></div></div>
+    <label class="lg-rem"><input type="checkbox" id="lgRemember" checked> 이 기기에서 이름·생일·나이 기억하기</label>
     <p class="hint" id="lgErr"></p>
     <button class="big" id="lgGo">시작하기</button>
     <button class="big alt" id="lgCancel">취소</button>
@@ -189,12 +199,21 @@
   </div>
 </div>
 
+<div class="modal" id="rvModal" hidden>
+  <div class="mbox">
+    <h2>📒 오답노트</h2>
+    <div id="rvBody"></div>
+    <button class="big alt" id="rvClose">닫기</button>
+  </div>
+</div>
 <div class="modal" id="evModal" hidden>
   <div class="mbox ev-box">
     <h2>🎄 크리스마스 복권 <span class="ev-dday" id="evDday"></span></h2>
     <div id="evBody"></div>
     <div class="ev-scratch" id="evScratch" hidden>
+      <div class="lt-frame"><div class="lt-top"><span>LUCKY</span><b>🍀 행운의 즉석복권 🍀</b><span>XMAS</span></div>
       <div class="ev-wrap"><div class="ev-card" id="evCard"></div><canvas id="evCanvas"></canvas></div>
+      <div class="lt-bot">한 장에 한 번! 행운을 빌어요 🎅</div></div>
       <button class="ev-link" id="evReveal">한 번에 열기</button>
       <button class="big ev-share" id="evShareBtn" hidden>💌 공유하고 선물 받기</button>
       <button class="big alt" id="evDone" hidden>확인</button>
@@ -215,16 +234,47 @@
   </div>
 </div>
 <div class="ev-toast" id="evToast" hidden></div>
+<div class="modal" id="iosModal" hidden>
+  <div class="mbox">
+    <h2>📲 홈 화면에 앱으로 추가</h2>
+    <ol class="ios-steps">
+      <li>사파리 아래쪽 <b>공유 버튼</b> <span class="ios-ic">⬆︎</span> 을 눌러요</li>
+      <li>목록을 내려서 <b>홈 화면에 추가</b>를 눌러요</li>
+      <li>오른쪽 위 <b>추가</b>를 누르면 끝!</li>
+    </ol>
+    <p class="msub">홈 화면의 🪜 아이콘으로 열면 앱처럼 전체 화면으로 열려요.</p>
+    <button class="big alt" id="iosClose">알겠어요</button>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-firestore-compat.js"></script>
-<script src="js/config.js?v=3"></script>
-<script src="js/data-words.js?v=3"></script>
-<script src="js/data-hanja.js?v=3"></script>
-<script src="js/game.js?v=3"></script>
-<script src="js/skin.js?v=3"></script>
-<script src="js/login.js?v=3"></script>
-<script src="js/event.js?v=3"></script>
+<script src="js/config.js?v=11"></script>
+<script src="js/data-words.js?v=11"></script>
+<script src="js/data-hanja.js?v=11"></script>
+<script src="js/game.js?v=11"></script>
+<script src="js/review.js?v=11"></script>
+<script src="js/skin.js?v=11"></script>
+<script src="js/login.js?v=11"></script>
+<script src="js/event.js?v=11"></script>
+<script>
+/* PWA: 앱 설치 + 오프라인 저장 */
+(function(){
+  if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){ window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }
+  var standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone===true;
+  var btn=document.getElementById('btnInstall'), deferred=null;
+  var ios=/iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  if(standalone) return;
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred=e; btn.hidden=false; });
+  window.addEventListener('appinstalled', function(){ btn.hidden=true; deferred=null; });
+  if(ios) btn.hidden=false;
+  btn.onclick=function(){
+    if(deferred){ deferred.prompt(); deferred.userChoice.finally(function(){ deferred=null; btn.hidden=true; }); return; }
+    document.getElementById('iosModal').hidden=false;
+  };
+  document.getElementById('iosClose').onclick=function(){ document.getElementById('iosModal').hidden=true; };
+})();
+</script>
 </body>
 </html>
